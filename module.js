@@ -16,7 +16,7 @@ function expand(shortUrl, callback) {
         } else {
             callback(undefined, response.request.href);
         }
-    }).end();
+    }).setMaxListeners(0);
 }
 
 module.exports = {
