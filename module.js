@@ -1,36 +1,47 @@
-var request = require("request");
-var http = require('http');
+const request = require("request")
+    , http    = require('http')
 
 function expand(shortUrl, options, callback) {
+    let returnPromise = false
     // options are optional, the function can still be used like this: expand(shortUrl, callback)
     if(typeof options == 'function') {
-        callback = options;
-        options = {};
+        callback = options
+        options  = {}
+    } else if(!callback) {
+        returnPromise = true
     }
 
-    var defaultOptions = { 
-    	method: "HEAD"
-      , url: shortUrl
-      , followAllRedirects: true
-      , timeout: 10000
-      , pool: pool
-	};
+    const defaultOptions = { 
+    	  method             : "HEAD"
+      , url                : shortUrl
+      , followAllRedirects : true
+      , timeout            : 10000
+      , pool               : new http.Agent({'maxSockets': Infinity})
+	  }
+
+    if(!options || typeof options != 'object') options = {}
 
     // merge the user-supplied options with the default options
-    for(var attribute in options) {
-        defaultOptions[attribute] = options[attribute];
+    for (let attribute in options)
+        defaultOptions[attribute] = options[attribute]
+
+    if (defaultOptions.headers && !defaultOptions.headers['User-Agent']) {
+        defaultOptions.headers['User-Agent'] = 'node-url-expander'
+    } else {
+        defaultOptions.headers = {'User-Agent' : 'node-url-expander'}
     }
 
-	var pool = new http.Agent({'maxSockets': Infinity});
-    request(defaultOptions, function (error, response) {
-        if (error) {
-            callback(error);
-        } else {
-            callback(undefined, response.request.href);
-        }
-    }).setMaxListeners(0);
+    return new Promise((resolve, reject) => {
+        request(defaultOptions, (error, response) => {
+          if (error) {
+              return returnPromise ? reject(err) : callback(error)
+          } else {
+              return returnPromise ? resolve(response.request.href) : callback(undefined, response.request.href)
+          }
+        }).setMaxListeners(0)
+    })
 }
 
 module.exports = {
-    expand: expand
+    expand : expand
 }
